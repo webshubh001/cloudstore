@@ -1,0 +1,101 @@
+# Deploy CloudStore Django App to Render
+
+Your project is a Django 4.2 app with MySQL, AWS S3, and email. Render offers free PostgreSQL but **not free MySQL**, so we'll switch the database to **PostgreSQL** on Render (Render's free tier includes a PostgreSQL instance). Your file storage stays on AWS S3 and all other secrets stay in environment variables.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Database Migration: MySQL → PostgreSQL**
+> Render's free tier only provides PostgreSQL, not MySQL. We will switch the database backend to PostgreSQL for the deployed version. Your local dev can still use MySQL. The migration is straightforward since Django abstracts the DB layer — no model changes needed, just a new DB driver (`psycopg2-binary`) and updated settings.
+
+> [!WARNING]
+> **Your `.env` file contains real secrets** (AWS keys, DB password, email app password). We will NOT commit `.env` to Git. All secrets are set via Render's environment variable dashboard.
+
+> [!CAUTION]
+> **Your current AWS credentials are visible in `.env`**. Since this file is in your project folder, ensure `.env` is in your `.gitignore` before pushing to GitHub. We will create/verify `.gitignore` as a first step.
+
+---
+
+## Proposed Changes
+
+### 1. Git & Security Setup
+
+#### [NEW] `.gitignore`
+- Ensure `.env`, `venv/`, `__pycache__`, `*.pyc`, `staticfiles/`, `media/`, `ngrok.exe` are excluded from Git
+
+---
+
+### 2. Configuration Files for Render
+
+#### [MODIFY] `requirements.txt`
+- Add `psycopg2-binary` (PostgreSQL driver)
+- Add `gunicorn` (production WSGI server)
+- Add `dj-database-url` (parse DATABASE_URL from Render's environment)
+
+#### [NEW] `build.sh`
+- Shell script Render runs on deploy:
+  ```bash
+  pip install -r requirements.txt
+  python manage.py collectstatic --noinput
+  python manage.py migrate
+  ```
+
+#### [NEW] `render.yaml`
+- Render blueprint file defining the web service and environment variables
+
+---
+
+### 3. Django Settings Updates
+
+#### [MODIFY] `cloudstore/settings.py`
+- Use `dj-database-url` to auto-parse `DATABASE_URL` (Render injects this for PostgreSQL)
+- Set `DEBUG=False` in production (read from env)
+- Add Render's domain to `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS`
+- Keep whitenoise for static files (already installed ✅)
+
+---
+
+## Deployment Steps (Post-Approval)
+
+1. Create `.gitignore` and verify secrets are excluded
+2. Update `requirements.txt` with PostgreSQL + gunicorn
+3. Create `build.sh` and `render.yaml`
+4. Update `settings.py` for production database
+5. Initialize a local Git repo and push to GitHub
+6. Connect GitHub repo to Render
+7. Set all environment variables in Render dashboard
+
+---
+
+## Render Environment Variables to Set
+
+| Variable | Value |
+|---|---|
+| `SECRET_KEY` | A new secure random key |
+| `DEBUG` | `False` |
+| `ALLOWED_HOSTS` | `your-app.onrender.com` |
+| `DATABASE_URL` | Auto-set by Render PostgreSQL |
+| `AWS_ACCESS_KEY_ID` | Your AWS key |
+| `AWS_SECRET_ACCESS_KEY` | Your AWS secret |
+| `AWS_STORAGE_BUCKET_NAME` | `shubham-cloudstore-mca` |
+| `AWS_S3_REGION_NAME` | `ap-south-1` |
+| `ENCRYPTION_KEY` | Your encryption key |
+| `EMAIL_BACKEND` | `django.core.mail.backends.smtp.EmailBackend` |
+| `EMAIL_HOST` | `smtp.gmail.com` |
+| `EMAIL_PORT` | `587` |
+| `EMAIL_USE_TLS` | `True` |
+| `EMAIL_HOST_USER` | Your Gmail |
+| `EMAIL_HOST_PASSWORD` | Your Gmail app password |
+| `DEFAULT_FROM_EMAIL` | Your Gmail |
+
+---
+
+## Verification Plan
+
+### Automated
+- `python manage.py check --deploy` locally before push
+
+### Manual
+- Visit the deployed Render URL
+- Register a user, upload a file, verify S3 storage works
+- Test file sharing email

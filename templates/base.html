@@ -1,0 +1,229 @@
+{% load static %}
+{% load file_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CloudStore - Secure cloud file storage powered by AWS S3.">
+    <title>{% block title %}CloudStore{% endblock %} | Secure Cloud Storage</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="{% static 'css/custom.css' %}" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ════ SIDEBAR ════════════════════════════════════════════════════════════ -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-logo">
+            <div class="logo-icon"><i class="fas fa-cloud"></i></div>
+            <span class="logo-text">CloudStore</span>
+        </div>
+        <button class="sidebar-toggle-btn d-lg-none" id="sidebarClose">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <div class="sidebar-upload">
+        <button class="btn-upload-trigger" data-bs-toggle="modal" data-bs-target="#uploadModal">
+            <i class="fas fa-plus"></i><span>Upload Files</span>
+        </button>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Main</div>
+        <a href="{% url 'files:dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <i class="fas fa-gauge-high"></i><span>Dashboard</span>
+        </a>
+        <a href="{% url 'files:file_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'file_list' %}active{% endif %}">
+            <i class="fas fa-folder-open"></i><span>My Files</span>
+        </a>
+        <a href="{% url 'files:search' %}" class="sidebar-link {% if request.resolver_match.url_name == 'search' %}active{% endif %}">
+            <i class="fas fa-magnifying-glass"></i><span>Search</span>
+        </a>
+
+        <div class="nav-section-label">Storage</div>
+        <a href="{% url 'files:trash' %}" class="sidebar-link {% if request.resolver_match.url_name == 'trash' %}active{% endif %}">
+            <i class="fas fa-trash-can"></i><span>Trash</span>
+        </a>
+        <a href="{% url 'accounts:profile' %}" class="sidebar-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+            <i class="fas fa-user-circle"></i><span>Profile</span>
+        </a>
+    </nav>
+
+    {% if user.is_authenticated %}
+    {% with profile=user.profile %}
+    {% if profile %}
+    <div class="sidebar-storage">
+        <div class="storage-label">
+            <span>Storage Used</span>
+            <span class="storage-numbers">{{ profile.storage_used|format_bytes }} / {{ profile.storage_quota_gb }} GB</span>
+        </div>
+        <div class="storage-bar-track">
+            <div class="storage-bar-fill {% if profile.storage_used_percentage > 90 %}danger{% elif profile.storage_used_percentage > 70 %}warning{% endif %}"
+                 style="width: {{ profile.storage_used_percentage }}%"></div>
+        </div>
+        <div class="storage-pct">{{ profile.storage_used_percentage }}% used</div>
+    </div>
+    {% endif %}
+    {% endwith %}
+    {% endif %}
+</aside>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ════ MAIN WRAPPER ═══════════════════════════════════════════════════════ -->
+<div class="main-wrapper">
+
+    <!-- TOP NAV -->
+    <header class="topnav">
+        <div class="topnav-left">
+            <button class="topnav-toggle" id="sidebarOpen"><i class="fas fa-bars"></i></button>
+            <h1 class="topnav-title">{% block page_title %}Dashboard{% endblock %}</h1>
+        </div>
+
+        <div class="topnav-center d-none d-md-flex">
+            <form action="{% url 'files:search' %}" method="get" class="topnav-search">
+                <i class="fas fa-magnifying-glass search-icon"></i>
+                <input type="text" name="q" placeholder="Search files..." value="{{ request.GET.q }}"
+                       class="search-input" id="globalSearch" autocomplete="off">
+                <button type="submit" class="search-btn">Search</button>
+            </form>
+        </div>
+
+        <div class="topnav-right">
+            {% if user.is_authenticated %}
+            <div class="dropdown">
+                <button class="user-avatar-btn dropdown-toggle" data-bs-toggle="dropdown">
+                    {% if user.profile.avatar %}
+                        <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="user-avatar-img">
+                    {% else %}
+                        <div class="user-avatar-placeholder">
+                            {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                        </div>
+                    {% endif %}
+                    <span class="d-none d-md-inline">{{ user.get_full_name|default:user.username }}</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li class="dropdown-header">
+                        <strong>{{ user.get_full_name|default:user.username }}</strong>
+                        <small class="d-block text-muted">{{ user.email }}</small>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'accounts:profile' %}"><i class="fas fa-user me-2"></i>Profile</a></li>
+                    <li><a class="dropdown-item" href="{% url 'files:dashboard' %}"><i class="fas fa-gauge-high me-2"></i>Dashboard</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}"><i class="fas fa-sign-out-alt me-2"></i>Sign Out</a></li>
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        {% if messages %}
+        <div class="messages-container">
+            {% for message in messages %}
+            <div class="alert-toast alert-toast-{{ message.tags }}" role="alert">
+                <div class="alert-toast-icon">
+                    {% if message.tags == 'success' %}<i class="fas fa-check-circle"></i>
+                    {% elif message.tags == 'error' or message.tags == 'danger' %}<i class="fas fa-exclamation-circle"></i>
+                    {% elif message.tags == 'warning' %}<i class="fas fa-triangle-exclamation"></i>
+                    {% else %}<i class="fas fa-info-circle"></i>{% endif %}
+                </div>
+                <div class="alert-toast-body">{{ message }}</div>
+                <button class="alert-toast-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<!-- ════ UPLOAD MODAL ═══════════════════════════════════════════════════════ -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title"><i class="fas fa-cloud-upload-alt me-2 text-primary"></i>Upload Files</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'files:file_upload' %}" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    <div class="dropzone" id="dropZone">
+                        <div class="dropzone-content">
+                            <div class="dropzone-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                            <h5>Drag &amp; drop files here</h5>
+                            <p class="text-muted">or click to browse</p>
+                            <input type="file" name="files" multiple id="fileInputModal" class="dropzone-input">
+                        </div>
+                        <div class="file-preview-list" id="filePreviewList"></div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label">Description <span class="text-muted">(optional)</span></label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Add a note..."></textarea>
+                    </div>
+                    <div class="mt-3 d-flex align-items-center gap-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="encrypt" id="encryptCheck" checked>
+                            <label class="form-check-label" for="encryptCheck">
+                                <i class="fas fa-lock me-1 text-warning"></i> Encrypt files
+                            </label>
+                        </div>
+                        <span class="badge bg-warning text-dark">Recommended</span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="uploadForm" class="btn btn-primary" id="uploadBtn">
+                    <i class="fas fa-upload me-2"></i>Upload
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════ NEW FOLDER MODAL ═══════════════════════════════════════════════════ -->
+<div class="modal fade" id="newFolderModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title"><i class="fas fa-folder-plus me-2 text-warning"></i>New Folder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'files:folder_create' %}" id="folderForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Folder Name</label>
+                        <input type="text" name="name" class="form-control"
+                               placeholder="My Folder" required autofocus id="folderNameInput">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="folderForm" class="btn btn-warning text-dark fw-bold">
+                    <i class="fas fa-folder-plus me-2"></i>Create Folder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

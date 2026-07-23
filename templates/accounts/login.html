@@ -1,0 +1,58 @@
+{% extends 'base_auth.html' %}
+{% block title %}Sign In{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <!-- Logo -->
+    <div class="auth-logo">
+        <div class="auth-logo-icon"><i class="fas fa-cloud"></i></div>
+        <h2 class="auth-logo-text">CloudStore</h2>
+        <p class="auth-tagline">Your files. Encrypted. Always secure.</p>
+    </div>
+
+    <h3 class="auth-title">Welcome back</h3>
+    <p class="auth-subtitle">Sign in to access your secure storage</p>
+
+    <form method="post" class="auth-form" novalidate>
+        {% csrf_token %}
+
+        <div class="form-floating mb-3">
+            <input type="text" name="username" id="id_username" class="form-control auth-input"
+                   placeholder="Username" required autofocus
+                   value="{{ form.username.value|default:'' }}">
+            <label for="id_username"><i class="fas fa-user me-2"></i>Username</label>
+            {% if form.username.errors %}
+            <div class="invalid-feedback d-block">{{ form.username.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-floating mb-4 position-relative">
+            <input type="password" name="password" id="id_password" class="form-control auth-input"
+                   placeholder="Password" required>
+            <label for="id_password"><i class="fas fa-lock me-2"></i>Password</label>
+            <button type="button" class="password-toggle" onclick="togglePassword('id_password', this)">
+                <i class="fas fa-eye"></i>
+            </button>
+            {% if form.non_field_errors %}
+            <div class="invalid-feedback d-block mt-1">{{ form.non_field_errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-auth-primary">
+            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+        </button>
+    </form>
+
+    <div class="auth-divider"><span>or</span></div>
+
+    <div class="auth-footer">
+        <p>Don't have an account? <a href="{% url 'accounts:register' %}" class="auth-link">Create one free</a></p>
+    </div>
+
+    <div class="auth-features">
+        <span class="feature-pill"><i class="fas fa-lock"></i> Encrypted</span>
+        <span class="feature-pill"><i class="fab fa-aws"></i> AWS S3</span>
+        <span class="feature-pill"><i class="fas fa-shield-halved"></i> Secure</span>
+    </div>
+</div>
+{% endblock %}

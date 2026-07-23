@@ -1,0 +1,40 @@
+# UI Overhaul: "Untitled UI" Light Mode Design
+
+The goal is to completely revamp the visual design of CloudStore. We will strip out the existing dark mode, glassmorphism, and neon colors, replacing them with a clean, professional, high-contrast light mode inspired by modern B2B SaaS dashboards (like Untitled UI).
+
+## Open Questions
+> [!IMPORTANT]
+> You previously asked for a **Folder Sharing** feature. Should I include the folder sharing implementation in this UI overhaul, or would you prefer I focus **only** on the UI redesign first, and tackle folder sharing afterward?
+
+## Proposed Changes
+
+### Global Styling (`static/css/index.css`)
+- **Remove Dark Mode Variables:** Delete the entire dark mode root and replace it with a clean, structured light mode palette:
+  - Backgrounds: `#FFFFFF` (content), `#F9FAFB` (sidebar/sections).
+  - Text: `#101828` (headings), `#475467` (subtext).
+  - Borders: `#EAECF0` for subtle separation.
+  - Primary Accent: `#7F56D9` (Untitled UI's signature purple) or a clean indigo.
+- **Typography:** Ensure Inter font is used universally with crisp weights (400, 500, 600).
+- **Components:** Redesign buttons to have subtle borders and light drop shadows (`box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05)`). Remove all backdrop-filters and glassy effects.
+
+### Layout Restructuring
+- **`templates/base.html`**:
+  - Update the sidebar to have a white/light gray background with a right border.
+  - Change navigation links to use clean hover states (e.g., light gray backgrounds) instead of neon glowing effects.
+  - Remove the moon/sun dark mode toggle entirely.
+- **`templates/base_auth.html`**:
+  - Update the authentication layout to a clean split-screen or centered card on a light gray background with no gradients.
+
+### Component Redesigns
+- **`dashboard.html` & `file_list.html`**:
+  - Redesign the file/folder grid to use standard white cards with subtle borders.
+  - Redesign the list view to be a clean, crisp table with a light gray header row and bottom borders separating rows.
+  - Update file icons to match the new color scheme (e.g., standard blue for Word, green for Excel, etc., without glowing effects).
+- **Forms & Inputs**:
+  - Use standard white inputs with `#EAECF0` borders. On focus, add a solid `#7F56D9` ring.
+
+## Verification Plan
+1. Re-write `index.css` with the new design tokens.
+2. Update `base.html` and `base_auth.html` layouts.
+3. Update specific page templates (`login.html`, `dashboard.html`, `file_list.html`).
+4. Present screenshots of the new UI for feedback.

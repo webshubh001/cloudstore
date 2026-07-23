@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load file_filters %}
+{% block title %}Version History — {{ file.original_name }}{% endblock %}
+{% block page_title %}Version History{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="glass-card p-4 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="file-type-icon {{ file.icon_color }} fs-2">
+                <i class="fas {{ file.icon_class }}"></i>
+            </div>
+            <div>
+                <h5 class="mb-1">{{ file.original_name }}</h5>
+                <p class="text-muted small mb-0">
+                    Current size: {{ file.size_human }} ·
+                    {% if file.is_encrypted %}<span class="text-warning"><i class="fas fa-lock me-1"></i>Encrypted</span>{% else %}<span>Not encrypted</span>{% endif %} ·
+                    {{ versions.count|add:1 }} version(s)
+                </p>
+            </div>
+            <div class="ms-auto">
+                <a href="{% url 'files:file_download' file.id %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-download me-2"></i>Download Current
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Version -->
+    <div class="glass-card p-4 mb-3 version-card current-version">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-3">
+                <div class="version-badge current">
+                    <i class="fas fa-star"></i>
+                    <span>Current</span>
+                </div>
+                <div>
+                    <div class="version-name">{{ file.original_name }}</div>
+                    <div class="version-meta">{{ file.size_human }} · Modified {{ file.updated_at|date:"M d, Y H:i" }}</div>
+                </div>
+            </div>
+            <div>
+                <a href="{% url 'files:file_download' file.id %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-download me-1"></i>Download
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Older Versions -->
+    {% if versions %}
+    <h6 class="text-muted mb-3 ms-1"><i class="fas fa-history me-2"></i>Previous Versions</h6>
+    {% for version in versions %}
+    <div class="glass-card p-4 mb-3 version-card">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="version-badge">
+                    <i class="fas fa-code-branch"></i>
+                    <span>v{{ version.version_number }}</span>
+                </div>
+                <div>
+                    <div class="version-name">{{ file.original_name }}</div>
+                    <div class="version-meta">
+                        {{ version.size_human }} · Archived {{ version.created_at|date:"M d, Y H:i" }}
+                        {% if version.note %}<span class="ms-2 text-muted">— {{ version.note }}</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'files:download_version' file.id version.id %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-download me-1"></i>Download
+                </a>
+                <form method="post" action="{% url 'files:restore_version' file.id version.id %}"
+                      onsubmit="return confirm('Restore to version {{ version.version_number }}? The current version will be archived.')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-warning text-dark">
+                        <i class="fas fa-rotate-left me-1"></i>Restore
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-code-branch"></i></div>
+        <h5>No previous versions</h5>
+        <p class="text-muted">Upload a new file with the same name to create a version history.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

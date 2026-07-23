@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+{% load file_filters %}
+{% block title %}{% if current_folder %}{{ current_folder.name }}{% else %}My Files{% endif %}{% endblock %}
+{% block page_title %}
+    {% if current_folder %}
+        <nav aria-label="breadcrumb" class="d-inline-flex align-items-center">
+            <a href="{% url 'files:file_list' %}" class="breadcrumb-link">My Files</a>
+            {% for name, fid in breadcrumbs %}
+            <i class="fas fa-chevron-right mx-2 text-muted small"></i>
+            {% if forloop.last %}
+            <span class="breadcrumb-current">{{ name }}</span>
+            {% else %}
+            <a href="{% url 'files:file_list_folder' fid %}" class="breadcrumb-link">{{ name }}</a>
+            {% endif %}
+            {% endfor %}
+        </nav>
+    {% else %}
+        My Files
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- ── Toolbar ──────────────────────────────────────────────────────── -->
+    <div class="file-toolbar glass-card p-3 mb-4">
+        <div class="file-toolbar-left">
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="fas fa-upload me-2"></i>Upload
+            </button>
+            <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#newFolderModal">
+                <i class="fas fa-folder-plus me-2"></i>New Folder
+            </button>
+        </div>
+        <div class="file-toolbar-right">
+            <!-- Sort -->
+            <div class="dropdown">
+                <button class="btn btn-outline btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-sort me-1"></i>Sort
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item {% if sort_by == '-created_at' %}active{% endif %}" href="?sort=-created_at">Newest First</a></li>
+                    <li><a class="dropdown-item {% if sort_by == 'created_at' %}active{% endif %}" href="?sort=created_at">Oldest First</a></li>
+                    <li><a class="dropdown-item {% if sort_by == 'original_name' %}active{% endif %}" href="?sort=original_name">Name A–Z</a></li>
+                    <li><a class="dropdown-item {% if sort_by == '-original_name' %}active{% endif %}" href="?sort=-original_name">Name Z–A</a></li>
+                    <li><a class="dropdown-item {% if sort_by == '-size' %}active{% endif %}" href="?sort=-size">Largest First</a></li>
+                    <li><a class="dropdown-item {% if sort_by == 'size' %}active{% endif %}" href="?sort=size">Smallest First</a></li>
+                </ul>
+            </div>
+            <!-- View Toggle -->
+            <div class="view-toggle">
+                <button class="view-btn active" id="gridViewBtn" title="Grid view"><i class="fas fa-grip"></i></button>
+                <button class="view-btn" id="listViewBtn" title="List view"><i class="fas fa-list"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Subfolders ─────────────────────────────────────────────────── -->
+    {% if subfolders %}
+    <div class="mb-4">
+        <div class="section-label"><i class="fas fa-folder me-2 text-warning"></i>Folders</div>
+        <div class="folder-grid" id="folderGrid">
+            {% for folder in subfolders %}
+            <div class="folder-card" id="folder-{{ folder.id }}">
+                <div class="folder-card-body">
+                    <a href="{% url 'files:file_list_folder' folder.id %}" class="folder-link">
+                        <div class="folder-icon"><i class="fas fa-folder"></i></div>
+                        <div class="folder-name">{{ folder.name }}</div>
+                        <div class="folder-count">{{ folder.total_file_count }} items</div>
+                    </a>
+                </div>
+                <div class="folder-card-actions">
+                    <button class="icon-btn dropdown-toggle" data-bs-toggle="dropdown" title="More">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'files:file_upload_folder' folder.id %}" onclick="setUploadFolder({{ folder.id }})">
+                                <i class="fas fa-upload me-2"></i>Upload Here
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="{% url 'files:folder_delete' folder.id %}"
+                               onclick="return confirm('Delete folder &quot;{{ folder.name }}&quot; and all its contents?')">
+                                <i class="fas fa-trash me-2"></i>Delete
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Files ──────────────────────────────────────────────────────── -->
+    <div class="mb-2">
+        <div class="section-label"><i class="fas fa-file me-2 text-primary"></i>Files
+            <span class="count-badge">{{ files.count }}</span>
+        </div>
+    </div>
+
+    {% if files %}
+    <!-- GRID VIEW -->
+    <div class="file-grid" id="fileGridView">
+        {% for file in files %}
+        <div class="file-card" id="file-{{ file.id }}">
+            <div class="file-card-icon {{ file.icon_color }}">
+                <i class="fas {{ file.icon_class }}"></i>
+            </div>
+            <div class="file-card-info">
+                <div class="file-card-name" title="{{ file.original_name }}">{{ file.original_name }}</div>
+                <div class="file-card-meta">
+                    <span>{{ file.size_human }}</span>
+                    <span class="dot-sep">·</span>
+                    <span>{{ file.created_at|date:"M d, Y" }}</span>
+                </div>
+                <div class="file-card-badges">
+                    {% if file.is_encrypted %}<span class="badge-encrypted"><i class="fas fa-lock"></i> Encrypted</span>{% endif %}
+                    {% if file.versions.count > 0 %}<span class="badge-version"><i class="fas fa-code-branch"></i> v{{ file.versions.count|add:1 }}</span>{% endif %}
+                </div>
+            </div>
+            <div class="file-card-actions">
+                <a href="{% url 'files:file_download' file.id %}" class="icon-btn" title="Download">
+                    <i class="fas fa-download"></i>
+                </a>
+                <a href="{% url 'files:share_file' file.id %}" class="icon-btn" title="Share">
+                    <i class="fas fa-share-nodes"></i>
+                </a>
+                <div class="dropdown">
+                    <button class="icon-btn" data-bs-toggle="dropdown" title="More options">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'files:file_download' file.id %}"><i class="fas fa-download me-2"></i>Download</a></li>
+                        <li><a class="dropdown-item" href="{% url 'files:share_file' file.id %}"><i class="fas fa-share-nodes me-2"></i>Share</a></li>
+                        <li><a class="dropdown-item" href="{% url 'files:version_history' file.id %}"><i class="fas fa-history me-2"></i>Version History</a></li>
+                        <li>
+                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#renameModal{{ file.id }}">
+                                <i class="fas fa-pen me-2"></i>Rename
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="{% url 'files:file_delete' file.id %}"
+                               onclick="return confirm('Move &quot;{{ file.original_name }}&quot; to trash?')">
+                                <i class="fas fa-trash me-2"></i>Delete
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rename Modal for each file -->
+        <div class="modal fade" id="renameModal{{ file.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title"><i class="fas fa-pen me-2"></i>Rename File</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form method="post" action="{% url 'files:file_rename' file.id %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label">New Name</label>
+                                <input type="text" name="original_name" class="form-control"
+                                       value="{{ file.original_name }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea name="description" class="form-control" rows="2">{{ file.description }}</textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Save</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- LIST VIEW (hidden by default) -->
+    <div class="file-list-table d-none" id="fileListView">
+        <div class="table-responsive">
+            <table class="table table-hover file-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Size</th>
+                        <th>Type</th>
+                        <th>Modified</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in files %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas {{ file.icon_class }} {{ file.icon_color }}"></i>
+                                <span>{{ file.original_name }}</span>
+                            </div>
+                        </td>
+                        <td>{{ file.size_human }}</td>
+                        <td><span class="badge bg-secondary">{{ file.extension|upper|default:'—' }}</span></td>
+                        <td>{{ file.updated_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            {% if file.is_encrypted %}
+                            <span class="badge bg-warning text-dark"><i class="fas fa-lock me-1"></i>Encrypted</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Plain</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'files:file_download' file.id %}" class="btn btn-xs btn-outline" title="Download"><i class="fas fa-download"></i></a>
+                                <a href="{% url 'files:share_file' file.id %}" class="btn btn-xs btn-outline" title="Share"><i class="fas fa-share-nodes"></i></a>
+                                <a href="{% url 'files:version_history' file.id %}" class="btn btn-xs btn-outline" title="History"><i class="fas fa-history"></i></a>
+                                <a href="{% url 'files:file_delete' file.id %}" class="btn btn-xs btn-outline text-danger"
+                                   onclick="return confirm('Move to trash?')" title="Delete"><i class="fas fa-trash"></i></a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-folder-open"></i></div>
+        <h5>This folder is empty</h5>
+        <p class="text-muted">Upload files or create subfolders to get started.</p>
+        <div class="d-flex gap-2 justify-content-center">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="fas fa-upload me-2"></i>Upload Files
+            </button>
+            <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#newFolderModal">
+                <i class="fas fa-folder-plus me-2"></i>New Folder
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Grid / List view toggle
+const gridBtn = document.getElementById('gridViewBtn');
+const listBtn = document.getElementById('listViewBtn');
+const gridView = document.getElementById('fileGridView');
+const listView = document.getElementById('fileListView');
+
+if (gridBtn && listBtn) {
+    const savedView = localStorage.getItem('fileView') || 'grid';
+    if (savedView === 'list') {
+        gridView?.classList.add('d-none');
+        listView?.classList.remove('d-none');
+        listBtn?.classList.add('active');
+        gridBtn?.classList.remove('active');
+    }
+    gridBtn.addEventListener('click', () => {
+        gridView?.classList.remove('d-none');
+        listView?.classList.add('d-none');
+        gridBtn.classList.add('active');
+        listBtn.classList.remove('active');
+        localStorage.setItem('fileView', 'grid');
+    });
+    listBtn.addEventListener('click', () => {
+        gridView?.classList.add('d-none');
+        listView?.classList.remove('d-none');
+        listBtn.classList.add('active');
+        gridBtn.classList.remove('active');
+        localStorage.setItem('fileView', 'list');
+    });
+}
+
+// Set upload folder in the upload modal
+function setUploadFolder(folderId) {
+    const form = document.getElementById('uploadForm');
+    if (form) {
+        form.action = `/upload/${folderId}/`;
+    }
+}
+
+// If inside a folder, pre-configure the upload form
+{% if current_folder %}
+const uploadForm = document.getElementById('uploadForm');
+if (uploadForm) {
+    uploadForm.action = "{% url 'files:file_upload_folder' current_folder.id %}";
+}
+const folderForm = document.getElementById('folderForm');
+if (folderForm) {
+    folderForm.action = "{% url 'files:folder_create_in' current_folder.id %}";
+}
+{% endif %}
+</script>
+{% endblock %}

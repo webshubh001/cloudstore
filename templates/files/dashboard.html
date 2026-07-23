@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+{% load file_filters %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- ── Stats Cards Row ──────────────────────────────────────────────── -->
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <h3 class="stat-title">Total Files</h3>
+                <div class="stat-icon info"><i class="fas fa-file"></i></div>
+            </div>
+            <div class="stat-value">{{ total_files }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <h3 class="stat-title">Folders</h3>
+                <div class="stat-icon primary"><i class="fas fa-folder"></i></div>
+            </div>
+            <div class="stat-value">{{ total_folders }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <h3 class="stat-title">Active Shares</h3>
+                <div class="stat-icon success"><i class="fas fa-share-nodes"></i></div>
+            </div>
+            <div class="stat-value">{{ shared_count }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <h3 class="stat-title">In Trash</h3>
+                <div class="stat-icon warning"><i class="fas fa-trash-can"></i></div>
+            </div>
+            <div class="stat-value">{{ trash_count }}</div>
+        </div>
+    </div>
+
+    <!-- ── Charts Row ──────────────────────────────────────────────────── -->
+    <div class="row g-4 mb-4">
+        <!-- Storage Donut -->
+        <div class="col-lg-5">
+            <div class="glass-card p-4 h-100">
+                <h5 class="card-section-title">
+                    <i class="fas fa-hard-drive me-2 text-primary"></i>Storage Overview
+                </h5>
+                <div class="d-flex align-items-center justify-content-center gap-4 flex-wrap">
+                    <div class="donut-chart-wrap">
+                        <canvas id="storageDonut" width="180" height="180"></canvas>
+                        <div class="donut-center-text">
+                            <span class="donut-pct">{{ profile.storage_used_percentage }}%</span>
+                            <span class="donut-lbl">Used</span>
+                        </div>
+                    </div>
+                    <div class="storage-legend">
+                        <div class="legend-item">
+                            <span class="legend-dot used"></span>
+                            <div>
+                                <div class="legend-val">{{ profile.storage_used|format_bytes }}</div>
+                                <div class="legend-lbl">Used</div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot free"></span>
+                            <div>
+                                <div class="legend-val">{{ profile.storage_free_bytes|format_bytes }}</div>
+                                <div class="legend-lbl">Available</div>
+                            </div>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot total"></span>
+                            <div>
+                                <div class="legend-val">{{ profile.storage_quota|format_bytes }}</div>
+                                <div class="legend-lbl">Total Quota</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Type Breakdown Bar Chart -->
+        <div class="col-lg-7">
+            <div class="glass-card p-4 h-100">
+                <h5 class="card-section-title">
+                    <i class="fas fa-chart-bar me-2 text-purple"></i>Storage by File Type
+                </h5>
+                <canvas id="typeBreakdownChart" style="max-height: 230px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Recent Files ──────────────────────────────────────────────────── -->
+    <div class="glass-card p-4 mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <h5 class="card-section-title mb-0">
+                <i class="fas fa-clock-rotate-left me-2 text-teal"></i>Recent Files
+            </h5>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" onclick="document.getElementById('uploadModal').classList.add('show')"
+                        data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="fas fa-upload me-1"></i>Upload
+                </button>
+                <a href="{% url 'files:file_list' %}" class="btn btn-outline">
+                    View All <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+
+        {% if recent_files %}
+        <div class="file-grid">
+            {% for file in recent_files %}
+            <div class="file-card" data-file-id="{{ file.id }}">
+                <div class="file-card-icon {{ file.icon_color }}">
+                    <i class="fas {{ file.icon_class }}"></i>
+                </div>
+                <div class="file-card-info">
+                    <div class="file-card-name" title="{{ file.original_name }}">{{ file.original_name }}</div>
+                    <div class="file-card-meta">
+                        <span>{{ file.size_human }}</span>
+                        <span class="dot-sep">·</span>
+                        <span>{{ file.updated_at|date:"M d" }}</span>
+                        {% if file.is_encrypted %}
+                        <span class="dot-sep">·</span>
+                        <span class="encrypted-badge" title="Encrypted"><i class="fas fa-lock"></i></span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="file-card-actions">
+                    <a href="{% url 'files:file_download' file.id %}" class="icon-btn" title="Download">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    <a href="{% url 'files:share_file' file.id %}" class="icon-btn" title="Share">
+                        <i class="fas fa-share-nodes"></i>
+                    </a>
+                    <div class="dropdown">
+                        <button class="icon-btn dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end ">
+                            <li><a class="dropdown-item" href="{% url 'files:version_history' file.id %}"><i class="fas fa-history me-2"></i>Version History</a></li>
+                            <li><a class="dropdown-item" href="{% url 'files:share_file' file.id %}"><i class="fas fa-share-nodes me-2"></i>Share</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{% url 'files:file_delete' file.id %}" onclick="return confirm('Move to trash?')"><i class="fas fa-trash me-2"></i>Delete</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+            <h5>No files yet</h5>
+            <p class="text-muted">Upload your first file to get started.</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="fas fa-upload me-2"></i>Upload Files
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ── Quick Folders ─────────────────────────────────────────────────── -->
+    {% if root_folders %}
+    <div class="glass-card p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="card-section-title mb-0">
+                <i class="fas fa-folder me-2 text-warning"></i>Quick Folders
+            </h5>
+            <button class="btn btn-sm btn-outline" data-bs-toggle="modal" data-bs-target="#newFolderModal">
+                <i class="fas fa-folder-plus me-1"></i>New Folder
+            </button>
+        </div>
+        <div class="folder-quick-grid">
+            {% for folder in root_folders %}
+            <a href="{% url 'files:file_list_folder' folder.id %}" class="folder-quick-card">
+                <div class="folder-quick-icon"><i class="fas fa-folder"></i></div>
+                <div class="folder-quick-name">{{ folder.name }}</div>
+                <div class="folder-quick-count">{{ folder.total_file_count }} files</div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const usedBytes = {{ profile.storage_used }};
+const quotaBytes = {{ profile.storage_quota }};
+const freeBytes = Math.max(quotaBytes - usedBytes, 0);
+const breakdownBytes = {{ breakdown_bytes_json|safe }};
+const breakdownLabels = {{ breakdown_labels_json|safe }};
+
+const chartColors = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
+
+// ── Storage Donut ──────────────────────────────────────────────────────────
+const donutCtx = document.getElementById('storageDonut').getContext('2d');
+new Chart(donutCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Used', 'Available'],
+        datasets: [{
+            data: [usedBytes, freeBytes],
+            backgroundColor: ['#6366f1', 'rgba(255,255,255,0.07)'],
+            borderColor: ['#6366f1', 'rgba(255,255,255,0.1)'],
+            borderWidth: 2,
+            hoverBackgroundColor: ['#818cf8', 'rgba(255,255,255,0.1)'],
+        }]
+    },
+    options: {
+        cutout: '75%',
+        plugins: { legend: { display: false }, tooltip: {
+            callbacks: {
+                label: (ctx) => {
+                    const bytes = ctx.raw;
+                    if (bytes < 1024) return `${ctx.label}: ${bytes} B`;
+                    if (bytes < 1024**2) return `${ctx.label}: ${(bytes/1024).toFixed(1)} KB`;
+                    if (bytes < 1024**3) return `${ctx.label}: ${(bytes/1024**2).toFixed(2)} MB`;
+                    return `${ctx.label}: ${(bytes/1024**3).toFixed(2)} GB`;
+                }
+            }
+        }},
+        animation: { animateScale: true, duration: 1000 }
+    }
+});
+
+// ── File Type Bar Chart ────────────────────────────────────────────────────
+const barCtx = document.getElementById('typeBreakdownChart').getContext('2d');
+new Chart(barCtx, {
+    type: 'bar',
+    data: {
+        labels: breakdownLabels,
+        datasets: [{
+            label: 'Storage Used',
+            data: breakdownBytes,
+            backgroundColor: chartColors.map(c => c + 'cc'),
+            borderColor: chartColors,
+            borderWidth: 2,
+            borderRadius: 8,
+            borderSkipped: false,
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: (ctx) => {
+                        const bytes = ctx.raw;
+                        if (bytes < 1024**2) return `${(bytes/1024).toFixed(1)} KB`;
+                        if (bytes < 1024**3) return `${(bytes/1024**2).toFixed(2)} MB`;
+                        return `${(bytes/1024**3).toFixed(2)} GB`;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                ticks: {
+                    color: 'rgba(255,255,255,0.5)',
+                    callback: v => v === 0 ? '0' : v < 1024**2 ? `${(v/1024).toFixed(0)}K` : `${(v/1024**2).toFixed(0)}M`
+                },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            x: { ticks: { color: 'rgba(255,255,255,0.6)' }, grid: { display: false } }
+        }
+    }
+});
+</script>
+{% endblock %}

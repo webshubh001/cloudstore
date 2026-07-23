@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load file_filters %}
+{% block title %}Profile{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row g-4">
+        <!-- Left: Avatar & Storage -->
+        <div class="col-lg-4">
+            <div class="glass-card text-center p-4">
+                <div class="profile-avatar-wrap mb-3">
+                    {% if profile.avatar %}
+                    <img src="{{ profile.avatar.url }}" alt="Avatar" class="profile-avatar-large">
+                    {% else %}
+                    <div class="profile-avatar-placeholder-large">
+                        {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+                    </div>
+                    {% endif %}
+                    <div class="profile-avatar-badge">
+                        <i class="fas fa-check"></i>
+                    </div>
+                </div>
+                <h4 class="mb-1">{{ request.user.get_full_name|default:request.user.username }}</h4>
+                <p class="text-muted small mb-3">{{ request.user.email }}</p>
+                <p class="text-muted small">Member since {{ profile.created_at|date:"M Y" }}</p>
+
+                <!-- Storage Ring -->
+                <div class="storage-ring-container my-4">
+                    <svg class="storage-ring" viewBox="0 0 120 120">
+                        <circle class="ring-bg" cx="60" cy="60" r="50" />
+                        <circle class="ring-fill" cx="60" cy="60" r="50"
+                            stroke-dasharray="{{ profile.storage_used_percentage|floatformat:1 }} 100"
+                            style="stroke-dasharray: calc({{ profile.storage_used_percentage }} * 3.14159 / 100 * 100) 314.159;" />
+                        <text x="60" y="55" class="ring-pct-text" text-anchor="middle">{{ profile.storage_used_percentage }}%</text>
+                        <text x="60" y="72" class="ring-sub-text" text-anchor="middle">Used</text>
+                    </svg>
+                </div>
+
+                <div class="storage-detail-row">
+                    <div class="storage-detail-item">
+                        <span class="storage-detail-val">{{ profile.storage_used|format_bytes }}</span>
+                        <span class="storage-detail-lbl">Used</span>
+                    </div>
+                    <div class="storage-detail-divider"></div>
+                    <div class="storage-detail-item">
+                        <span class="storage-detail-val">{{ profile.storage_quota|format_bytes }}</span>
+                        <span class="storage-detail-lbl">Total</span>
+                    </div>
+                    <div class="storage-detail-divider"></div>
+                    <div class="storage-detail-item">
+                        <span class="storage-detail-val">{{ profile.storage_free_bytes|format_bytes }}</span>
+                        <span class="storage-detail-lbl">Free</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Stats -->
+            <div class="glass-card p-4 mt-4">
+                <h5 class="mb-3"><i class="fas fa-chart-pie me-2 text-primary"></i>File Statistics</h5>
+                <div class="stat-item-list">
+                    <div class="stat-item"><span>Total Files</span><strong>{{ total_files }}</strong></div>
+                    {% for cat, count in file_type_stats.items %}
+                    <div class="stat-item"><span>{{ cat }}</span><strong>{{ count }}</strong></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Edit Forms -->
+        <div class="col-lg-8">
+            <!-- Profile Info Form -->
+            <div class="glass-card p-4 mb-4">
+                <h5 class="mb-4"><i class="fas fa-user-pen me-2 text-primary"></i>Edit Profile</h5>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_profile">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name</label>
+                            {{ profile_form.first_name }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name</label>
+                            {{ profile_form.last_name }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Email Address</label>
+                            {{ profile_form.email }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Bio</label>
+                            {{ avatar_form.bio }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Avatar</label>
+                            {{ avatar_form.avatar }}
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Change Password Form -->
+            <div class="glass-card p-4">
+                <h5 class="mb-4"><i class="fas fa-key me-2 text-warning"></i>Change Password</h5>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="change_password">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Current Password</label>
+                            <input type="password" name="old_password" class="form-control " required>
+                            {% if pwd_form.old_password.errors %}<div class="invalid-feedback d-block">{{ pwd_form.old_password.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">New Password</label>
+                            <input type="password" name="new_password1" class="form-control " required>
+                            {% if pwd_form.new_password1.errors %}<div class="invalid-feedback d-block">{{ pwd_form.new_password1.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Confirm New Password</label>
+                            <input type="password" name="new_password2" class="form-control " required>
+                            {% if pwd_form.new_password2.errors %}<div class="invalid-feedback d-block">{{ pwd_form.new_password2.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-warning text-dark fw-bold">
+                            <i class="fas fa-key me-2"></i>Update Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

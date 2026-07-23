@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% block title %}Share — {{ file.original_name }}{% endblock %}
+{% block page_title %}Share File{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <!-- File Info -->
+            <div class="glass-card p-4 mb-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="fs-2 {{ file.icon_color }}"><i class="fas {{ file.icon_class }}"></i></div>
+                    <div>
+                        <h5 class="mb-1">{{ file.original_name }}</h5>
+                        <p class="text-muted small mb-0">{{ file.size_human }} · Uploaded {{ file.created_at|date:"M d, Y" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Share Link Form -->
+            <div class="glass-card p-4 mb-4">
+                <h5 class="mb-4"><i class="fas fa-link me-2 text-primary"></i>Create Share Link</h5>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Access Level</label>
+                            {{ form.permission }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Expiry</label>
+                            {{ form.expires_in_hours }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Share with (email)</label>
+                            {{ form.shared_email }}
+                            <div class="form-text">Optional: record who you're sharing with</div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-link me-2"></i>Generate Link
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Newly Created Link -->
+            {% if new_share %}
+            <div class="glass-card p-4 mb-4 border border-primary">
+                <h5 class="mb-3 text-primary"><i class="fas fa-check-circle me-2"></i>Share Link Created!</h5>
+                <div class="share-link-box">
+                    <input type="text" class="form-control " id="shareUrl" value="{{ share_url }}" readonly>
+                    <button class="btn btn-primary btn-copy" onclick="copyShareLink()">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                <div class="mt-3 d-flex gap-3 text-muted small">
+                    <span><i class="fas fa-shield-halved me-1 text-success"></i>
+                        {% if new_share.can_download %}View & Download{% else %}View Only{% endif %}
+                    </span>
+                    {% if new_share.expires_at %}
+                    <span><i class="fas fa-clock me-1 text-warning"></i>Expires {{ new_share.expires_at|date:"M d, Y H:i" }}</span>
+                    {% else %}
+                    <span><i class="fas fa-infinity me-1"></i>Never expires</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Active Shares List -->
+        <div class="col-lg-5">
+            <div class="glass-card p-4">
+                <h5 class="mb-3"><i class="fas fa-share-nodes me-2 text-teal"></i>Active Share Links</h5>
+                {% if existing_shares %}
+                {% for share in existing_shares %}
+                <div class="share-item {% if not share.is_valid %}expired-share{% endif %}">
+                    <div class="share-item-info">
+                        <div class="share-item-token">
+                            <i class="fas fa-link me-1"></i>
+                            ...{{ share.token|stringformat:'s'|slice:'-8:' }}
+                        </div>
+                        <div class="share-item-meta">
+                            <span class="me-2">
+                                <i class="fas fa-eye me-1"></i>{{ share.access_count }} views
+                            </span>
+                            {% if share.shared_email %}
+                            <span><i class="fas fa-envelope me-1"></i>{{ share.shared_email }}</span>
+                            {% endif %}
+                            <br>
+                            {% if share.is_expired %}
+                            <span class="text-danger"><i class="fas fa-times-circle me-1"></i>Expired</span>
+                            {% elif not share.is_active %}
+                            <span class="text-secondary">Revoked</span>
+                            {% elif share.expires_at %}
+                            <span class="text-warning"><i class="fas fa-clock me-1"></i>Expires {{ share.expires_at|date:"M d" }}</span>
+                            {% else %}
+                            <span class="text-success"><i class="fas fa-check me-1"></i>Active</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if share.is_active and not share.is_expired %}
+                    <div class="share-item-actions">
+                        <button class="icon-btn" onclick="copyToClipboard('{{ request.scheme }}://{{ request.get_host }}/share/{{ share.token }}/')" title="Copy link">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <form method="post" action="{% url 'files:revoke_share' share.id %}" style="display:inline">
+                            {% csrf_token %}
+                            <button type="submit" class="icon-btn text-danger" title="Revoke" onclick="return confirm('Revoke this share link?')">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-link fa-2x mb-2 d-block"></i>
+                    No share links yet. Create one above.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function copyShareLink() {
+    const input = document.getElementById('shareUrl');
+    input.select();
+    navigator.clipboard.writeText(input.value).then(() => {
+        showToast('Link copied to clipboard!', 'success');
+    });
+}
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => showToast('Link copied!', 'success'));
+}
+function showToast(msg, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert-toast alert-toast-${type}`;
+    toast.innerHTML = `<div class="alert-toast-body">${msg}</div>`;
+    document.querySelector('.main-content').prepend(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+</script>
+{% endblock %}

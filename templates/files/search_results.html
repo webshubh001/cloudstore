@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Search Files{% endblock %}
+{% block page_title %}Search Files{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Search Form -->
+    <div class="glass-card p-4 mb-4">
+        <form method="get" action="{% url 'files:search' %}" id="searchForm">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="search-input-wrap">
+                        <i class="fas fa-magnifying-glass search-icon-input"></i>
+                        <input type="text" name="q" class="form-control  ps-5"
+                               placeholder="Search by filename or description..."
+                               value="{{ form.q.value|default:'' }}" autofocus>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select name="file_type" class="form-select ">
+                        <option value="">All Types</option>
+                        <option value="image" {% if form.file_type.value == 'image' %}selected{% endif %}>Images</option>
+                        <option value="video" {% if form.file_type.value == 'video' %}selected{% endif %}>Videos</option>
+                        <option value="audio" {% if form.file_type.value == 'audio' %}selected{% endif %}>Audio</option>
+                        <option value="pdf" {% if form.file_type.value == 'pdf' %}selected{% endif %}>PDFs</option>
+                        <option value="text" {% if form.file_type.value == 'text' %}selected{% endif %}>Documents</option>
+                        <option value="zip" {% if form.file_type.value == 'zip' %}selected{% endif %}>Archives</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="date" name="date_from" class="form-control "
+                           placeholder="From date" value="{{ form.date_from.value|default:'' }}">
+                </div>
+                <div class="col-md-2">
+                    <input type="date" name="date_to" class="form-control "
+                           placeholder="To date" value="{{ form.date_to.value|default:'' }}">
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-magnifying-glass me-2"></i>Search
+                    </button>
+                    <a href="{% url 'files:search' %}" class="btn btn-outline">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    {% if query %}
+    <div class="mb-3">
+        <span class="text-muted">
+            {% if result_count %}
+            Found <strong class="text-white">{{ result_count }}</strong> result(s) for "<strong class="text-primary">{{ query }}</strong>"
+            {% else %}
+            No results found for "<strong class="text-primary">{{ query }}</strong>"
+            {% endif %}
+        </span>
+    </div>
+    {% endif %}
+
+    {% if results %}
+    <div class="file-grid">
+        {% for file in results %}
+        <div class="file-card">
+            <div class="file-card-icon {{ file.icon_color }}">
+                <i class="fas {{ file.icon_class }}"></i>
+            </div>
+            <div class="file-card-info">
+                <div class="file-card-name" title="{{ file.original_name }}">{{ file.original_name }}</div>
+                <div class="file-card-meta">
+                    <span>{{ file.size_human }}</span>
+                    <span class="dot-sep">·</span>
+                    {% if file.folder %}
+                    <span><i class="fas fa-folder me-1 text-warning"></i>{{ file.folder.name }}</span>
+                    <span class="dot-sep">·</span>
+                    {% endif %}
+                    <span>{{ file.created_at|date:"M d, Y" }}</span>
+                </div>
+            </div>
+            <div class="file-card-actions">
+                <a href="{% url 'files:file_download' file.id %}" class="icon-btn" title="Download">
+                    <i class="fas fa-download"></i>
+                </a>
+                <a href="{% url 'files:share_file' file.id %}" class="icon-btn" title="Share">
+                    <i class="fas fa-share-nodes"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% elif query %}
+    <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-magnifying-glass"></i></div>
+        <h5>No files found</h5>
+        <p class="text-muted">Try different keywords or adjust your filters.</p>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-magnifying-glass"></i></div>
+        <h5>Search your files</h5>
+        <p class="text-muted">Enter a filename, description, or filter by type and date range.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

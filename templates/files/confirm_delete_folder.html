@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Delete Folder{% endblock %}
+{% block page_title %}Delete Folder{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 520px; margin: 60px auto;">
+    <div class="glass-card p-5 text-center">
+        <div class="empty-state-icon text-danger mb-3" style="animation: none;">
+            <i class="fas fa-triangle-exclamation"></i>
+        </div>
+        <h4 class="mb-2">Delete "{{ folder.name }}"?</h4>
+        <p class="text-muted mb-4">
+            This will permanently delete the folder and <strong>all files inside it</strong>.
+            Files will be removed from S3 and cannot be recovered.
+        </p>
+        <div class="d-flex gap-3 justify-content-center">
+            <a href="{% if folder.parent %}{% url 'files:file_list_folder' folder.parent.id %}{% else %}{% url 'files:file_list' %}{% endif %}" class="btn btn-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash me-2"></i>Delete Forever
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

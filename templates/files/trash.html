@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Trash{% endblock %}
+{% block page_title %}Trash{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="glass-card p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1"><i class="fas fa-trash-can me-2 text-danger"></i>Trash</h5>
+                <p class="text-muted small mb-0">Files in trash are not counted toward your storage quota. They'll be permanently deleted after 30 days.</p>
+            </div>
+            {% if deleted_files %}
+            <form method="post" action="{% url 'files:empty_trash' %}" onsubmit="return confirm('Permanently delete ALL trashed files? This cannot be undone.')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash-can me-2"></i>Empty Trash
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if deleted_files %}
+    <div class="file-grid">
+        {% for file in deleted_files %}
+        <div class="file-card trashed">
+            <div class="file-card-icon text-secondary">
+                <i class="fas {{ file.icon_class }}"></i>
+            </div>
+            <div class="file-card-info">
+                <div class="file-card-name" title="{{ file.original_name }}">{{ file.original_name }}</div>
+                <div class="file-card-meta">
+                    <span>{{ file.size_human }}</span>
+                    <span class="dot-sep">·</span>
+                    <span class="text-danger">Deleted {{ file.deleted_at|date:"M d, Y" }}</span>
+                </div>
+            </div>
+            <div class="file-card-actions">
+                <a href="{% url 'files:restore_file' file.id %}" class="icon-btn text-success" title="Restore">
+                    <i class="fas fa-rotate-left"></i>
+                </a>
+                <form method="post" action="{% url 'files:permanent_delete' file.id %}" style="display:inline"
+                      onsubmit="return confirm('Permanently delete &quot;{{ file.original_name }}&quot;? This cannot be undone.')">
+                    {% csrf_token %}
+                    <button type="submit" class="icon-btn text-danger border-0 bg-transparent" title="Delete permanently">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon text-success"><i class="fas fa-check-circle"></i></div>
+        <h5>Trash is empty</h5>
+        <p class="text-muted">No files in trash. Deleted files appear here before permanent removal.</p>
+        <a href="{% url 'files:file_list' %}" class="btn btn-primary">
+            <i class="fas fa-folder-open me-2"></i>Back to Files
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
