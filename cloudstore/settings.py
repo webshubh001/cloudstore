@@ -24,6 +24,14 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
 ]
 
+# ─── Render HTTPS Proxy ───────────────────────────────────────────────────────
+# Render terminates SSL at the load balancer and forwards requests via HTTP
+# internally. This tells Django to trust the X-Forwarded-Proto header so that
+# request.build_absolute_uri() generates https:// links (needed for share URLs).
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
+
 # Applications
 INSTALLED_APPS = [
     'django.contrib.admin',
