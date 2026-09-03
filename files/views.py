@@ -1,5 +1,6 @@
 import json
 import logging
+import threading
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -561,33 +562,27 @@ def share_file(request, file_id):
 </html>"""
 
                     subject = f"{sender_name} shared \"{file_obj.original_name}\" with you - CloudStore"
-                    email = EmailMultiAlternatives(
-                        subject=subject,
-                        body=plain_body,
-                        from_email=f"CloudStore <{settings.EMAIL_HOST_USER}>",
-                        to=[share.shared_email],
-                    )
-                    email.attach_alternative(html_body, 'text/html')
-                    email.send(fail_silently=False)
-                    messages.success(request, f'Share link created and emailed to {share.shared_email}!')
+                    from_email = f"CloudStore <{settings.EMAIL_HOST_USER}>"
+
+                    def send_bg_email():
+                        try:
+                            email = EmailMultiAlternatives(
+                                subject=subject,
+                                body=plain_body,
+                                from_email=from_email,
+                                to=[share.shared_email],
+                            )
+                            email.attach_alternative(html_body, 'text/html')
+                            email.send(fail_silently=False)
+                        except Exception as e:
+                            logger.error(f"Background email failed to {share.shared_email}: {e}")
+
+                    threading.Thread(target=send_bg_email, daemon=True).start()
+                    messages.success(request, f'Share link created! An email is being sent to {share.shared_email}.')
 
                 except Exception as e:
-                    import smtplib
-                    err_str = str(e)
-                    logger.error(f"Error sending share email to {share.shared_email}: {e}")
-                    if isinstance(e, smtplib.SMTPAuthenticationError):
-                        messages.warning(
-                            request,
-                            'Share link created ✓, but email could not be sent — '
-                            'Gmail requires an App Password. Go to your Google Account → '
-                            'Security → 2-Step Verification → App Passwords and paste it '
-                            'in EMAIL_HOST_PASSWORD in your .env file.'
-                        )
-                    else:
-                        messages.warning(
-                            request,
-                            f'Share link created ✓, but email delivery failed: {err_str}'
-                        )
+                    logger.error(f"Error preparing share email for {share.shared_email}: {e}")
+                    messages.warning(request, 'Share link created, but email preparation failed.')
             else:
                 messages.success(request, 'Share link created!')
                 
