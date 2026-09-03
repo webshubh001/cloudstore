@@ -564,22 +564,23 @@ def share_file(request, file_id):
                     subject = f"{sender_name} shared \"{file_obj.original_name}\" with you - CloudStore"
                     from_email = f"CloudStore <{settings.EMAIL_HOST_USER}>"
 
-                    def send_bg_email():
-                        try:
-                            email = EmailMultiAlternatives(
-                                subject=subject,
-                                body=plain_body,
-                                from_email=from_email,
-                                to=[share.shared_email],
-                            )
-                            email.attach_alternative(html_body, 'text/html')
-                            email.send(fail_silently=False)
-                        except Exception as e:
-                            logger.error(f"Background email failed to {share.shared_email}: {e}")
-
-                    threading.Thread(target=send_bg_email, daemon=True).start()
-                    messages.success(request, f'Share link created! An email is being sent to {share.shared_email}.')
-
+                    try:
+                        email = EmailMultiAlternatives(
+                            subject=subject,
+                            body=plain_body,
+                            from_email=from_email,
+                            to=[share.shared_email],
+                        )
+                        email.attach_alternative(html_body, 'text/html')
+                        email.send(fail_silently=False)
+                        messages.success(request, f'Share link created and emailed to {share.shared_email}!')
+                    except Exception as e:
+                        err_str = str(e)
+                        logger.error(f"Error sending share email to {share.shared_email}: {e}")
+                        messages.warning(
+                            request,
+                            f'Share link created, but email delivery failed: {err_str}'
+                        )
                 except Exception as e:
                     logger.error(f"Error preparing share email for {share.shared_email}: {e}")
                     messages.warning(request, 'Share link created, but email preparation failed.')
