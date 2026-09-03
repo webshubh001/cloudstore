@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── File count animation (dashboard) ──────────────────────────────────
-    document.querySelectorAll('.stat-card-value').forEach(el => {
+    document.querySelectorAll('.stat-value').forEach(el => {
         const target = parseInt(el.textContent.trim());
         if (!isNaN(target) && target > 0) {
             let start = 0;

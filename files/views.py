@@ -4,14 +4,14 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import (
-    HttpResponse, JsonResponse, Http404, StreamingHttpResponse
+    HttpResponse, JsonResponse,
 )
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
-from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.http import require_POST
 from django.db.models import Q, Sum
 from django.conf import settings
-from django.core.mail import send_mail, EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives
 
 from .models import Folder, File, FileVersion, FileShare
 from .forms import (
@@ -63,7 +63,6 @@ def dashboard(request):
     shared_count = FileShare.objects.filter(shared_by=request.user, is_active=True).count()
 
     storage_breakdown = get_storage_breakdown(request.user)
-    breakdown_json = json.dumps({k: format_bytes(v) for k, v in storage_breakdown.items()})
     breakdown_bytes_json = json.dumps(list(storage_breakdown.values()))
     breakdown_labels_json = json.dumps(list(storage_breakdown.keys()))
 
@@ -76,10 +75,8 @@ def dashboard(request):
         'trash_count': trash_count,
         'shared_count': shared_count,
         'storage_breakdown': storage_breakdown,
-        'breakdown_json': breakdown_json,
         'breakdown_bytes_json': breakdown_bytes_json,
         'breakdown_labels_json': breakdown_labels_json,
-        'format_bytes': format_bytes,
     })
 
 
@@ -206,7 +203,12 @@ def file_upload(request, folder_id=None):
 
         if not uploaded_files:
             messages.error(request, 'No files were selected.')
-            return redirect(request.META.get('HTTP_REFERER', 'files:file_list'))
+            referer = request.META.get('HTTP_REFERER')
+            if referer:
+                return redirect(referer)
+            if folder_id:
+                return redirect('files:file_list_folder', folder_id=folder_id)
+            return redirect('files:file_list')
 
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
         success_count = 0
@@ -245,18 +247,24 @@ def file_upload(request, folder_id=None):
                 ).first()
 
                 if existing:
-                    # Save current as a version
+                    # Save current as a version before overwriting
                     version_num = existing.versions.count() + 1
                     version_key = make_s3_key(
                         request.user.id, existing.id, filename, version=version_num
                     )
-                    copy_s3_object(existing.s3_key, version_key)
-                    FileVersion.objects.create(
-                        file=existing,
-                        version_number=version_num,
-                        s3_key=version_key,
-                        size=existing.size,
-                    )
+                    copied = copy_s3_object(existing.s3_key, version_key)
+                    if copied:
+                        FileVersion.objects.create(
+                            file=existing,
+                            version_number=version_num,
+                            s3_key=version_key,
+                            size=existing.size,
+                        )
+                    else:
+                        logger.warning(
+                            f"Version archive copy failed for file {existing.id}; "
+                            "proceeding with overwrite without archiving previous version."
+                        )
                     # Upload new version
                     new_key = make_s3_key(request.user.id, existing.id, filename)
                     upload_to_s3(file_data, new_key, mime_type, encrypt=encrypt)
@@ -295,8 +303,9 @@ def file_upload(request, folder_id=None):
 
                             file_obj.s3_key = s3_key
                             file_obj.save(update_fields=['s3_key'])
+                            # Update storage only inside the transaction so it rolls back on failure
+                            profile.add_usage(file_size)
 
-                        profile.add_usage(file_size)
                         success_count += 1
                     except Exception as upload_err:
                         # transaction.atomic() already rolled back the DB record
@@ -394,10 +403,11 @@ def empty_trash(request):
     count = 0
     for f in deleted_files:
         try:
-            delete_from_s3(f.s3_key)
+            s3_ok = delete_from_s3(f.s3_key)
             for version in f.versions.all():
                 delete_from_s3(version.s3_key)
-            profile.subtract_usage(f.size)
+            if s3_ok:
+                profile.subtract_usage(f.size)
             f.delete()
             count += 1
         except Exception as e:
@@ -415,10 +425,11 @@ def permanent_delete(request, file_id):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
 
     try:
-        delete_from_s3(file_obj.s3_key)
+        s3_ok = delete_from_s3(file_obj.s3_key)
         for version in file_obj.versions.all():
             delete_from_s3(version.s3_key)
-        profile.subtract_usage(file_obj.size)
+        if s3_ok:
+            profile.subtract_usage(file_obj.size)
         file_obj.delete()
         messages.success(request, 'File permanently deleted.')
     except Exception as e:
@@ -442,7 +453,12 @@ def file_rename(request, file_id):
             messages.success(request, f'File renamed to "{file_obj.original_name}".')
         else:
             messages.error(request, 'Invalid file name.')
-    return redirect(request.META.get('HTTP_REFERER', 'files:file_list'))
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return redirect(referer)
+    if file_obj.folder_id:
+        return redirect('files:file_list_folder', folder_id=file_obj.folder_id)
+    return redirect('files:file_list')
 
 
 # ─── File Sharing ─────────────────────────────────────────────────────────────
