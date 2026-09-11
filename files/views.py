@@ -503,64 +503,50 @@ def share_file(request, file_id):
                     )
 
                     # ΓöÇΓöÇ HTML email body ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-                    html_body = f"""
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {{ font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f7; margin: 0; padding: 0; }}
-    .wrapper {{ max-width: 560px; margin: 40px auto; background: #fff; border-radius: 12px;
-                box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden; }}
-    .header {{ background: linear-gradient(135deg, #7c3aed, #a855f7); padding: 32px 40px; text-align: center; }}
-    .header h1 {{ color: #fff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }}
-    .header p {{ color: rgba(255,255,255,0.85); margin: 6px 0 0; font-size: 14px; }}
-    .body {{ padding: 36px 40px; }}
-    .greeting {{ font-size: 16px; color: #374151; margin-bottom: 16px; }}
-    .file-card {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px;
-                  padding: 20px 24px; margin-bottom: 28px; display: flex; align-items: center; gap: 16px; }}
-    .file-icon {{ font-size: 36px; }}
-    .file-name {{ font-weight: 700; font-size: 16px; color: #111827; margin: 0 0 4px; }}
-    .file-meta {{ font-size: 13px; color: #6b7280; margin: 0; }}
-    .btn {{ display: block; background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff !important;
-            text-decoration: none; text-align: center; padding: 14px 32px; border-radius: 8px;
-            font-weight: 600; font-size: 15px; margin-bottom: 24px; }}
-    .info-row {{ display: flex; justify-content: space-between; font-size: 13px;
-                 color: #6b7280; border-top: 1px solid #f3f4f6; padding-top: 20px; }}
-    .footer {{ background: #f9fafb; text-align: center; padding: 16px; font-size: 12px; color: #9ca3af; }}
-  </style>
-</head>
-<body>
-<div class="wrapper">
-  <div class="header">
-    <h1>Γÿü∩╕Å CloudStore</h1>
-    <p>Secure Cloud File Sharing</p>
-  </div>
-  <div class="body">
-    <p class="greeting">Hi there,</p>
-    <p style="color:#374151;font-size:15px;">
-      <strong>{sender_name}</strong> has shared a file with you on <strong>CloudStore</strong>.
-    </p>
-    <div class="file-card">
-      <div class="file-icon">≡ƒôä</div>
-      <div>
-        <p class="file-name">{file_obj.original_name}</p>
-        <p class="file-meta">Access: {permission_label} &nbsp;|&nbsp; Expires: {expiry_str}</p>
-      </div>
-    </div>
-    <a href="{share_url}" class="btn">≡ƒöù Open Shared File</a>
-    <div class="info-row">
-      <span>Shared by: <strong>{sender_name}</strong></span>
-      <span>Expires: <strong>{expiry_str}</strong></span>
-    </div>
-  </div>
-  <div class="footer">
-    You received this because someone shared a CloudStore file with you.<br>
-    If you did not expect this, you can safely ignore this email.
-  </div>
-</div>
-</body>
-</html>"""
+                    html_body = (
+                        "<!DOCTYPE html>"
+                        "<html>"
+                        "<head>"
+                        '<meta charset="utf-8">'
+                        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+                        "<style>"
+                        "body{font-family:'Segoe UI',Arial,sans-serif;background:#f4f4f7;margin:0;padding:0}"
+                        ".wrap{max-width:560px;margin:40px auto;background:#fff;border-radius:12px;"
+                        "box-shadow:0 4px 24px rgba(0,0,0,.08);overflow:hidden}"
+                        ".hdr{background:linear-gradient(135deg,#7c3aed,#a855f7);padding:32px 40px;text-align:center}"
+                        ".hdr h1{color:#fff;margin:0;font-size:26px;font-weight:700}"
+                        ".hdr p{color:rgba(255,255,255,.85);margin:6px 0 0;font-size:14px}"
+                        ".bd{padding:36px 40px}"
+                        ".badge{display:inline-block;background:#7c3aed;color:#fff;font-size:11px;"
+                        "font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px}"
+                        ".card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;"
+                        "padding:20px 24px;margin:16px 0 28px}"
+                        ".fname{font-weight:700;font-size:16px;color:#111827;margin:0 0 6px}"
+                        ".fmeta{font-size:13px;color:#6b7280;margin:0}"
+                        ".btn{display:block;background:linear-gradient(135deg,#7c3aed,#a855f7);"
+                        "color:#fff!important;text-decoration:none;text-align:center;padding:15px 32px;"
+                        "border-radius:8px;font-weight:700;font-size:15px;margin-bottom:24px}"
+                        ".info{font-size:13px;color:#6b7280;border-top:1px solid #f3f4f6;padding-top:18px}"
+                        ".ftr{background:#f9fafb;text-align:center;padding:16px;font-size:12px;color:#9ca3af}"
+                        "</style></head><body>"
+                        '<div class="wrap">'
+                        '<div class="hdr"><h1>CloudStore</h1><p>Secure Cloud File Sharing</p></div>'
+                        '<div class="bd">'
+                        f'<p style="color:#374151;font-size:15px">Hi there,<br><br>'
+                        f'<strong>{sender_name}</strong> has shared a file with you on <strong>CloudStore</strong>.</p>'
+                        '<div class="card">'
+                        '<span class="badge">SHARED FILE</span>'
+                        f'<p class="fname">{file_obj.original_name}</p>'
+                        f'<p class="fmeta">Access: {permission_label} &nbsp;&bull;&nbsp; Expires: {expiry_str}</p>'
+                        "</div>"
+                        f'<a href="{share_url}" class="btn">Open Shared File &rarr;</a>'
+                        '<div class="info">'
+                        f'Shared by: <strong>{sender_name}</strong> &nbsp;&bull;&nbsp; Expires: <strong>{expiry_str}</strong>'
+                        "</div></div>"
+                        '<div class="ftr">You received this because someone shared a CloudStore file with you.<br>'
+                        "If you did not expect this, you can safely ignore this email.</div>"
+                        "</div></body></html>"
+                    )
 
                     subject = f"{sender_name} shared \"{file_obj.original_name}\" with you - CloudStore"
 
