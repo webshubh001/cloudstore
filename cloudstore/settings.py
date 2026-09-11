@@ -158,9 +158,9 @@ DEFAULT_STORAGE_QUOTA = 5 * 1024 * 1024 * 1024  # 5 GB in bytes
 # ─── Max Upload Size (100 MB) ────────────────────────────────────────────────
 MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
 
-# ─── Email Configuration (Resend HTTP API — works on Render, no SMTP needed) ──
-# Resend sends over HTTPS (Port 443), so Render's SMTP block doesn't apply.
-RESEND_API_KEY = config('RESEND_API_KEY', default='')
+# ─── Email Configuration (SendGrid HTTP API — works on Render, no SMTP needed) ───
+# SendGrid sends over HTTPS (Port 443), so Render's SMTP block doesn't apply.
+SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='devcloudstore001@gmail.com')
 
 # ─── File size formatting ─────────────────────────────────────────────────────

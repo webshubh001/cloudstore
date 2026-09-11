@@ -32,7 +32,7 @@ services:
         sync: false
       - key: ENCRYPTION_KEY
         sync: false
-      - key: RESEND_API_KEY
+      - key: SENDGRID_API_KEY
         sync: false
       - key: DEFAULT_FROM_EMAIL
-        value: "onboarding@resend.dev"
+        value: "devcloudstore001@gmail.com"

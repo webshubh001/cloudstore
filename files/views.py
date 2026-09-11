@@ -12,7 +12,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.db.models import Q, Sum
 from django.conf import settings
-import resend
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 from .models import Folder, File, FileVersion, FileShare
 from .forms import (
@@ -563,16 +564,17 @@ def share_file(request, file_id):
 
                     subject = f"{sender_name} shared \"{file_obj.original_name}\" with you - CloudStore"
 
-                    # ── Send via Resend HTTP API (works on Render — Port 443, no SMTP block) ──
+                    # ── Send via SendGrid HTTP API (Port 443, no SMTP block on Render) ──
                     try:
-                        resend.api_key = settings.RESEND_API_KEY
-                        resend.Emails.send({
-                            "from": f"CloudStore <{settings.DEFAULT_FROM_EMAIL}>",
-                            "to": [share.shared_email],
-                            "subject": subject,
-                            "html": html_body,
-                            "text": plain_body,
-                        })
+                        message = Mail(
+                            from_email=f'CloudStore <{settings.DEFAULT_FROM_EMAIL}>',
+                            to_emails=share.shared_email,
+                            subject=subject,
+                            html_content=html_body,
+                            plain_text_content=plain_body,
+                        )
+                        sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+                        sg.send(message)
                         messages.success(request, f'Share link created and emailed to {share.shared_email}!')
                     except Exception as e:
                         err_str = str(e)

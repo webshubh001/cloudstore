@@ -11,4 +11,4 @@ crispy-bootstrap5==0.7
 whitenoise==6.6.0
 gunicorn==21.2.0
 dj-database-url==3.1.2
-resend==2.10.0
+sendgrid==6.12.5
