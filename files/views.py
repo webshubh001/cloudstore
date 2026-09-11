@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.db.models import Q, Sum
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
+import resend
 
 from .models import Folder, File, FileVersion, FileShare
 from .forms import (
@@ -29,14 +29,14 @@ from accounts.models import UserProfile
 logger = logging.getLogger(__name__)
 
 
-# ─── Dashboard ────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ Dashboard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def dashboard(request):
     """Main dashboard with storage stats, recent files, quick actions."""
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
 
-    # ── Auto-sync storage_used from actual file sizes ──────────────────────
+    # ΓöÇΓöÇ Auto-sync storage_used from actual file sizes ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     # This ensures the storage display is always accurate, regardless of
     # whether the counter got out of sync (e.g. from failed uploads).
     actual_used = File.objects.filter(
@@ -46,7 +46,7 @@ def dashboard(request):
     if profile.storage_used != actual_used:
         profile.storage_used = actual_used
         profile.save(update_fields=['storage_used'])
-    # ──────────────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     recent_files = File.objects.filter(
         owner=request.user, is_deleted=False
@@ -82,7 +82,7 @@ def dashboard(request):
 
 
 
-# ─── File Listing ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ File Listing ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def file_list(request, folder_id=None):
@@ -125,7 +125,7 @@ def file_list(request, folder_id=None):
     })
 
 
-# ─── Folder Operations ────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ Folder Operations ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 @require_POST
@@ -188,7 +188,7 @@ def _delete_folder_recursive(folder, user):
         _delete_folder_recursive(sub, user)
 
 
-# ─── File Upload ──────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ File Upload ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def file_upload(request, folder_id=None):
@@ -239,7 +239,7 @@ def file_upload(request, folder_id=None):
 
                 mime_type = detect_mime_type(filename, file_data)
 
-                # Check for existing file with same name → versioning
+                # Check for existing file with same name ΓåÆ versioning
                 existing = File.objects.filter(
                     owner=request.user,
                     folder=current_folder,
@@ -325,7 +325,7 @@ def file_upload(request, folder_id=None):
     return redirect('files:file_list')
 
 
-# ─── File Download ────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ File Download ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def file_download(request, file_id):
@@ -357,7 +357,7 @@ def file_download(request, file_id):
     return response
 
 
-# ─── File Delete (Soft) ───────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ File Delete (Soft) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def file_delete(request, file_id):
@@ -373,7 +373,7 @@ def file_delete(request, file_id):
     return redirect('files:file_list')
 
 
-# ─── Trash ────────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ Trash ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def trash_view(request):
@@ -440,7 +440,7 @@ def permanent_delete(request, file_id):
     return redirect('files:trash')
 
 
-# ─── File Rename ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ File Rename ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def file_rename(request, file_id):
@@ -462,7 +462,7 @@ def file_rename(request, file_id):
     return redirect('files:file_list')
 
 
-# ─── File Sharing ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ File Sharing ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def share_file(request, file_id):
@@ -491,17 +491,17 @@ def share_file(request, file_id):
                     )
                     permission_label = 'View & Download' if share.can_download else 'View Only'
 
-                    # ── Plain-text fallback ──────────────────────────────────
+                    # ΓöÇΓöÇ Plain-text fallback ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
                     plain_body = (
                         f"{sender_name} shared a file with you via CloudStore.\n\n"
                         f"File: {file_obj.original_name}\n"
                         f"Access: {permission_label}\n"
                         f"Expires: {expiry_str}\n\n"
                         f"Open link: {share_url}\n\n"
-                        f"— CloudStore Team"
+                        f"ΓÇö CloudStore Team"
                     )
 
-                    # ── HTML email body ──────────────────────────────────────
+                    # ΓöÇΓöÇ HTML email body ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
                     html_body = f"""
 <!DOCTYPE html>
 <html>
@@ -532,7 +532,7 @@ def share_file(request, file_id):
 <body>
 <div class="wrapper">
   <div class="header">
-    <h1>☁️ CloudStore</h1>
+    <h1>Γÿü∩╕Å CloudStore</h1>
     <p>Secure Cloud File Sharing</p>
   </div>
   <div class="body">
@@ -541,13 +541,13 @@ def share_file(request, file_id):
       <strong>{sender_name}</strong> has shared a file with you on <strong>CloudStore</strong>.
     </p>
     <div class="file-card">
-      <div class="file-icon">📄</div>
+      <div class="file-icon">≡ƒôä</div>
       <div>
         <p class="file-name">{file_obj.original_name}</p>
         <p class="file-meta">Access: {permission_label} &nbsp;|&nbsp; Expires: {expiry_str}</p>
       </div>
     </div>
-    <a href="{share_url}" class="btn">🔗 Open Shared File</a>
+    <a href="{share_url}" class="btn">≡ƒöù Open Shared File</a>
     <div class="info-row">
       <span>Shared by: <strong>{sender_name}</strong></span>
       <span>Expires: <strong>{expiry_str}</strong></span>
@@ -562,17 +562,17 @@ def share_file(request, file_id):
 </html>"""
 
                     subject = f"{sender_name} shared \"{file_obj.original_name}\" with you - CloudStore"
-                    from_email = f"CloudStore <{settings.EMAIL_HOST_USER}>"
 
+                    # ── Send via Resend HTTP API (works on Render — Port 443, no SMTP block) ──
                     try:
-                        email = EmailMultiAlternatives(
-                            subject=subject,
-                            body=plain_body,
-                            from_email=from_email,
-                            to=[share.shared_email],
-                        )
-                        email.attach_alternative(html_body, 'text/html')
-                        email.send(fail_silently=False)
+                        resend.api_key = settings.RESEND_API_KEY
+                        resend.Emails.send({
+                            "from": f"CloudStore <{settings.DEFAULT_FROM_EMAIL}>",
+                            "to": [share.shared_email],
+                            "subject": subject,
+                            "html": html_body,
+                            "text": plain_body,
+                        })
                         messages.success(request, f'Share link created and emailed to {share.shared_email}!')
                     except Exception as e:
                         err_str = str(e)
@@ -645,7 +645,7 @@ def shared_download(request, token):
     })
 
 
-# ─── Search ───────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ Search ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def search_files(request):
@@ -687,7 +687,7 @@ def search_files(request):
     })
 
 
-# ─── Version History ──────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ Version History ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def version_history(request, file_id):
@@ -765,7 +765,7 @@ def download_version(request, file_id, version_id):
     return response
 
 
-# ─── Storage Stats API ────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ Storage Stats API ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @login_required
 def storage_stats_api(request):
